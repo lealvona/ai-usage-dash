@@ -4,173 +4,285 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Usage Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
     <div id="app">
-        <!-- Password Modal -->
-        <div id="password-modal" class="modal">
-            <div class="modal-content">
-                <h2>🔐 Enter Master Password</h2>
-                <p>Enter your master password to unlock your API keys</p>
-                <input type="password" id="master-password" placeholder="Master Password">
-                <button onclick="initializeStorage()" class="btn-primary">Unlock</button>
-                <div id="password-error" class="error-message"></div>
+        <!-- Welcome / Setup Screen -->
+        <div id="welcome-screen" class="screen">
+            <div class="welcome-container">
+                <div class="welcome-header">
+                    <div class="logo-large">🤖</div>
+                    <h1>AI Usage Dashboard</h1>
+                    <p class="subtitle">Monitor and track your AI API usage across all providers</p>
+                </div>
+                
+                <div class="setup-card">
+                    <div class="setup-icon">🔐</div>
+                    <h2>Get Started</h2>
+                    <p>Enter a master password to secure your API keys</p>
+                    <div class="input-group">
+                        <input type="password" id="master-password" placeholder="Create master password" class="modern-input">
+                        <input type="password" id="confirm-password" placeholder="Confirm password" class="modern-input">
+                    </div>
+                    <button onclick="setupStorage()" class="btn-primary btn-large">
+                        <span>Continue</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <p class="setup-note">Your password encrypts API keys locally. We never store it.</p>
+                </div>
+                
+                <div class="providers-preview">
+                    <h3>Supported Providers</h3>
+                    <div class="provider-badges">
+                        <span class="badge">OpenAI</span>
+                        <span class="badge">Claude</span>
+                        <span class="badge">Gemini</span>
+                        <span class="badge">Mini Max</span>
+                        <span class="badge">Z.ai</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Main Application -->
-        <div id="main-app" class="hidden">
-            <!-- Header -->
-            <header class="header">
-                <div class="header-content">
+        <!-- Unlock Screen -->
+        <div id="unlock-screen" class="screen hidden">
+            <div class="unlock-container">
+                <div class="logo-large">🔓</div>
+                <h1>Welcome Back</h1>
+                <p>Enter your master password to unlock</p>
+                <div class="input-group">
+                    <input type="password" id="unlock-password" placeholder="Master password" class="modern-input">
+                </div>
+                <button onclick="unlockStorage()" class="btn-primary btn-large">Unlock</button>
+                <p id="unlock-error" class="error-text hidden"></p>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard-screen" class="screen hidden">
+            <!-- Top Navigation -->
+            <header class="top-nav">
+                <div class="nav-left">
                     <div class="logo">
                         <span class="logo-icon">🤖</span>
-                        <h1>AI Usage Dashboard</h1>
+                        <span class="logo-text">AI Usage</span>
                     </div>
-                    <div class="header-actions">
-                        <button onclick="showSettings()" class="btn-secondary">⚙️ Settings</button>
-                        <button onclick="refreshData()" class="btn-secondary">🔄 Refresh</button>
-                    </div>
+                </div>
+                <div class="nav-right">
+                    <button class="btn-icon" onclick="refreshAll()" title="Refresh">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" onclick="openSettings()" title="Settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                        </svg>
+                    </button>
                 </div>
             </header>
 
-            <!-- Navigation -->
-            <nav class="nav-tabs">
-                <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
-                <button class="nav-tab" data-tab="providers" onclick="switchTab('providers')">🔌 Providers</button>
-                <button class="nav-tab" data-tab="analytics" onclick="switchTab('analytics')">📈 Analytics</button>
-            </nav>
-
-            <!-- Dashboard Tab -->
-            <div id="dashboard-tab" class="tab-content active">
-                <!-- Time Period Selector -->
-                <div class="period-selector">
-                    <button class="period-btn active" data-period="hourly" onclick="changePeriod('hourly')">Hourly</button>
-                    <button class="period-btn" data-period="daily" onclick="changePeriod('daily')">Daily</button>
-                    <button class="period-btn" data-period="weekly" onclick="changePeriod('weekly')">Weekly</button>
-                    <button class="period-btn" data-period="monthly" onclick="changePeriod('monthly')">Monthly</button>
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Period Selector -->
+                <div class="period-bar">
+                    <div class="period-tabs">
+                        <button class="period-tab active" data-period="hourly" onclick="changePeriod('hourly')">
+                            <span class="period-label">Hourly</span>
+                        </button>
+                        <button class="period-tab" data-period="daily" onclick="changePeriod('daily')">
+                            <span class="period-label">Today</span>
+                        </button>
+                        <button class="period-tab" data-period="weekly" onclick="changePeriod('weekly')">
+                            <span class="period-label">This Week</span>
+                        </button>
+                        <button class="period-tab" data-period="monthly" onclick="changePeriod('monthly')">
+                            <span class="period-label">This Month</span>
+                        </button>
+                    </div>
+                    <div class="last-updated">
+                        <span id="last-update-time">Last updated: Just now</span>
+                    </div>
                 </div>
 
-                <!-- Summary Cards -->
-                <div class="summary-cards" id="summary-cards">
-                    <div class="summary-card">
-                        <div class="card-icon">📊</div>
-                        <div class="card-content">
-                            <h3>Total Tokens</h3>
-                            <p class="card-value" id="total-tokens">0</p>
+                <!-- Summary Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card stat-tokens">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="total-tokens">0</span>
+                            <span class="stat-label">Total Tokens</span>
                         </div>
                     </div>
-                    <div class="summary-card">
-                        <div class="card-icon">🔢</div>
-                        <div class="card-content">
-                            <h3>Total Requests</h3>
-                            <p class="card-value" id="total-requests">0</p>
+                    <div class="stat-card stat-requests">
+                        <div class="stat-icon">🔢</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="total-requests">0</span>
+                            <span class="stat-label">API Requests</span>
                         </div>
                     </div>
-                    <div class="summary-card">
-                        <div class="card-icon">💰</div>
-                        <div class="card-content">
-                            <h3>Total Cost</h3>
-                            <p class="card-value" id="total-cost">$0.00</p>
+                    <div class="stat-card stat-cost">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="total-cost">$0.00</span>
+                            <span class="stat-label">Total Cost</span>
                         </div>
                     </div>
-                    <div class="summary-card">
-                        <div class="card-icon">🔌</div>
-                        <div class="card-content">
-                            <h3>Active Providers</h3>
-                            <p class="card-value" id="active-providers">0</p>
+                    <div class="stat-card stat-providers">
+                        <div class="stat-icon">🔌</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="active-providers">0</span>
+                            <span class="stat-label">Active Providers</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Charts Row -->
-                <div class="charts-row">
-                    <div class="chart-container">
-                        <h3>Usage Distribution</h3>
-                        <canvas id="usage-pie-chart"></canvas>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Usage Distribution</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="usage-pie-chart"></canvas>
+                        </div>
                     </div>
-                    <div class="chart-container">
-                        <h3>Cost by Provider</h3>
-                        <canvas id="cost-bar-chart"></canvas>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Cost by Provider</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="cost-bar-chart"></canvas>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Provider Cards -->
-                <div class="provider-cards" id="provider-cards">
-                    <!-- Dynamically populated -->
+                <div class="section-header">
+                    <h2>Providers</h2>
+                    <button class="btn-secondary" onclick="openAddProvider()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Provider
+                    </button>
                 </div>
-            </div>
-
-            <!-- Providers Tab -->
-            <div id="providers-tab" class="tab-content hidden">
+                
                 <div class="providers-grid" id="providers-grid">
-                    <!-- Dynamically populated -->
+                    <!-- Provider cards will be dynamically inserted -->
                 </div>
-            </div>
 
-            <!-- Analytics Tab -->
-            <div id="analytics-tab" class="tab-content hidden">
-                <div class="analytics-container">
-                    <div class="chart-large">
-                        <h3>Usage Trends (Last 30 Days)</h3>
-                        <canvas id="usage-line-chart"></canvas>
-                    </div>
-                    <div class="chart-large">
-                        <h3>Request Volume</h3>
-                        <canvas id="requests-line-chart"></canvas>
-                    </div>
+                <!-- Empty State -->
+                <div class="empty-state hidden" id="empty-state">
+                    <div class="empty-icon">🔌</div>
+                    <h3>No Providers Configured</h3>
+                    <p>Add your first AI provider to start tracking usage</p>
+                    <button class="btn-primary" onclick="openAddProvider()">Add Provider</button>
                 </div>
-            </div>
+            </main>
         </div>
 
         <!-- Settings Modal -->
-        <div id="settings-modal" class="modal hidden">
-            <div class="modal-content large">
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal">
                 <div class="modal-header">
-                    <h2>⚙️ Settings</h2>
-                    <button onclick="hideSettings()" class="close-btn">&times;</button>
+                    <h2>Settings</h2>
+                    <button class="btn-close" onclick="closeSettings()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <div class="settings-section">
-                        <h3>API Key Management</h3>
-                        <div id="api-keys-list">
-                            <!-- Dynamically populated -->
+                        <h3>API Keys</h3>
+                        <p class="settings-desc">Manage your provider API keys</p>
+                        <div id="api-keys-list" class="api-keys-list">
+                            <!-- API keys will be dynamically inserted -->
                         </div>
-                        <div class="add-key-form">
-                            <select id="provider-select">
-                                <option value="openai">OpenAI</option>
-                                <option value="claude">Claude</option>
-                                <option value="gemini">Gemini</option>
-                                <option value="minimax">Mini Max</option>
-                                <option value="zai">Z.ai</option>
-                            </select>
-                            <input type="password" id="new-api-key" placeholder="Enter API key">
-                            <button onclick="addApiKey()" class="btn-primary">Add Key</button>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <h3>Update Settings</h3>
-                        <label>
-                            <input type="checkbox" id="auto-update" checked>
-                            Auto-update every 5 minutes
-                        </label>
+                        <button class="btn-outline" onclick="openAddProvider()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add New Provider
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay hidden">
-            <div class="spinner"></div>
-            <p>Loading...</p>
+        <!-- Add Provider Modal -->
+        <div id="add-provider-modal" class="modal-overlay hidden">
+            <div class="modal modal-add-provider">
+                <div class="modal-header">
+                    <h2>Add Provider</h2>
+                    <button class="btn-close" onclick="closeAddProvider()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="provider-select-grid">
+                        <button class="provider-select-card" data-provider="openai" onclick="selectProvider('openai')">
+                            <span class="provider-icon">🧠</span>
+                            <span class="provider-name">OpenAI</span>
+                            <span class="provider-status">GPT-4, GPT-3.5</span>
+                        </button>
+                        <button class="provider-select-card" data-provider="claude" onclick="selectProvider('claude')">
+                            <span class="provider-icon">💬</span>
+                            <span class="provider-name">Claude</span>
+                            <span class="provider-status">Claude 3.5, Claude 3</span>
+                        </button>
+                        <button class="provider-select-card" data-provider="gemini" onclick="selectProvider('gemini')">
+                            <span class="provider-icon">✨</span>
+                            <span class="provider-name">Gemini</span>
+                            <span class="provider-status">Gemini Pro, Ultra</span>
+                        </button>
+                        <button class="provider-select-card" data-provider="minimax" onclick="selectProvider('minimax')">
+                            <span class="provider-icon">⚡</span>
+                            <span class="provider-name">Mini Max</span>
+                            <span class="provider-status">Mini Max API</span>
+                        </button>
+                        <button class="provider-select-card" data-provider="zai" onclick="selectProvider('zai')">
+                            <span class="provider-icon">🎯</span>
+                            <span class="provider-name">Z.ai</span>
+                            <span class="provider-status">Z.ai Platform</span>
+                        </button>
+                    </div>
+                    
+                    <div id="api-key-form" class="api-key-form hidden">
+                        <h3 id="selected-provider-name">OpenAI</h3>
+                        <div class="input-group">
+                            <label>API Key</label>
+                            <input type="password" id="api-key-input" placeholder="Enter your API key" class="modern-input">
+                        </div>
+                        <button class="btn-primary btn-large btn-full" onclick="saveApiKey()">Save API Key</button>
+                        <p class="api-key-help">Get your API key from the provider's dashboard</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Notification -->
-        <div id="notification" class="notification hidden">
-            <span id="notification-message"></span>
+        <!-- Toast Notifications -->
+        <div id="toast-container"></div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-spinner"></div>
         </div>
     </div>
 
