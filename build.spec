@@ -1,4 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all, collect_submodules
+
+# Collect pkg_resources and its dependencies
+datas_pkg_resources, binaries_pkg_resources, hiddenimports_pkg_resources = collect_all('pkg_resources')
+
+# Also collect jaraco modules that pkg_resources needs
+try:
+    from PyInstaller.utils.hooks import collect_data_files
+    jaraco_datas = collect_data_files('jaraco.text')
+except:
+    jaraco_datas = []
 
 block_cipher = None
 
@@ -10,12 +21,12 @@ app_description = 'Track and visualize AI usage across multiple providers'
 a = Analysis(
     ['gui_app.py'],
     pathex=[],
-    binaries=[],
-    datas=[
+    binaries=binaries_pkg_resources,
+    datas=datas_pkg_resources + [
         ('gui_templates', 'gui_templates'),
         ('gui_static', 'gui_static'),
     ],
-    hiddenimports=[
+    hiddenimports=hiddenimports_pkg_resources + [
         'flask',
         'webview',
         'cryptography',
@@ -27,6 +38,11 @@ a = Analysis(
         'encryption_manager',
         'enhanced_providers',
         'enhanced_api_client',
+        # Explicitly include jaraco modules
+        'jaraco',
+        'jaraco.text',
+        'jaraco.context',
+        'jaraco.functools',
     ],
     hookspath=[],
     hooksconfig={},
@@ -54,16 +70,15 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # No console window
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Can add icon here
+    icon=None,
 )
 
-# For Windows, also create a console version for debugging
 exe_console = EXE(
     pyz,
     a.scripts,
@@ -78,7 +93,7 @@ exe_console = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # Console version for debugging
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
