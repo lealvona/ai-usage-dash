@@ -9,6 +9,7 @@ import json
 import logging
 import threading
 import time
+import argparse
 from typing import Dict, Any, Optional
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -26,22 +27,83 @@ from enhanced_providers import (
     ZaiEnhanced
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('ai_usage_dash.log'),
-        logging.StreamHandler()
-    ]
-)
 
-logger = logging.getLogger(__name__)
+def setup_logging(log_dir: str = None, debug: bool = False) -> logging.Logger:
+    """
+    Setup platform-specific logging configuration
+    
+    Args:
+        log_dir: Directory for log files
+        debug: Enable debug logging
+        
+    Returns:
+        Configured logger
+    """
+    # Determine log directory
+    if log_dir is None:
+        if sys.platform == 'win32':
+            log_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'AIUsageDash', 'logs')
+        else:
+            log_dir = os.path.expanduser('~/.ai_usage_dash/logs')
+    
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Log file path
+    log_file = os.path.join(log_dir, 'ai_usage_dash.log')
+    
+    # Configure logging
+    log_level = logging.DEBUG if debug else logging.INFO
+    
+    # Create formatters
+    file_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_formatter = logging.Formatter(
+        '%(levelname)s: %(message)s'
+    )
+    
+    # Setup handlers
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    
+    # Remove existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # File handler (always log to file)
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(file_formatter)
+    root_logger.addHandler(file_handler)
+    
+    # Console handler (only if not in daemon mode)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(console_formatter)
+    root_logger.addHandler(console_handler)
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized. Log file: {log_file}")
+    logger.info(f"Platform: {sys.platform}, Python: {sys.version}")
+    
+    return logger
 
-# Get the base directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Get the base directory (handle PyInstaller)
+def get_base_dir() -> str:
+    """Get the base directory for the application"""
+    if getattr(sys, 'frozen', False):
+        # Running as executable
+        return os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        return os.path.dirname(os.path.abspath(__file__))
+
 
 # Initialize Flask app
+BASE_DIR = get_base_dir()
+
 app = Flask(__name__, 
             template_folder=os.path.join(BASE_DIR, 'gui_templates'),
             static_folder=os.path.join(BASE_DIR, 'gui_static'))
@@ -52,6 +114,7 @@ providers: Dict[str, Any] = {}
 update_thread = None
 stop_updates = False
 current_period = 'daily'
+logger = None
 
 
 def initialize_providers():
@@ -162,7 +225,7 @@ def list_keys():
 
 @app.route('/api/keys/<provider>', methods=['POST'])
 def set_api_key(provider):
-    """Set API key for a provider"""
+    """Set API key for a Provider"""
     try:
         data = request.get_json()
         api_key = data.get('api_key')
@@ -298,11 +361,39 @@ def start_flask():
     app.run(host='127.0.0.1', port=5000, debug=False, threaded=True)
 
 
-def main():
-    """Main entry point"""
-    global update_thread
+def release_console():
+    """Release console control on Windows"""
+    if sys.platform == 'win32':
+        # Detach from console on Windows
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            kernel32.FreeConsole()
+        except Exception:
+            pass
+
+
+def main(daemon: bool = False, debug: bool = False, log_dir: str = None):
+    """Main entry point
     
-    logger.info("Starting AI Usage Dashboard GUI...")
+    Args:
+        daemon: Run in daemon mode (release console control)
+        debug: Enable debug logging
+        log_dir: Custom log directory
+    """
+    global logger, update_thread
+    
+    # Setup logging first
+    logger = setup_logging(log_dir=log_dir, debug=debug)
+    
+    logger.info("=" * 50)
+    logger.info("Starting AI Usage Dashboard")
+    logger.info("=" * 50)
+    
+    # Handle daemon mode
+    if daemon:
+        logger.info("Running in daemon mode - releasing console control")
+        release_console()
     
     # Start Flask in background thread
     flask_thread = threading.Thread(target=start_flask, daemon=True)
@@ -310,10 +401,12 @@ def main():
     
     # Wait for Flask to start
     time.sleep(1)
+    logger.info("Flask server started on http://127.0.0.1:5000")
     
     # Start background updater
     update_thread = threading.Thread(target=background_updater, daemon=True)
     update_thread.start()
+    logger.info("Background updater started")
     
     # Create webview window
     window = webview.create_window(
@@ -326,7 +419,8 @@ def main():
     )
     
     # Start webview
-    webview.start(debug=False)
+    logger.info("Opening GUI window...")
+    webview.start(debug=debug)
     
     # Cleanup
     global stop_updates
@@ -335,4 +429,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='AI Usage Dashboard')
+    parser.add_argument('--daemon', '-d', action='store_true',
+                       help='Run in daemon mode (release console control)')
+    parser.add_argument('--debug', action='store_true',
+                       help='Enable debug logging')
+    parser.add_argument('--log-dir', type=str, default=None,
+                       help='Custom log directory')
+    
+    args = parser.parse_args()
+    
+    main(daemon=args.daemon, debug=args.debug, log_dir=args.log_dir)
