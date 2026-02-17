@@ -1,3 +1,20 @@
+# Core Flask dependencies
 Flask==3.0.0
 python-dotenv==1.0.0
 requests==2.31.0
+
+# GUI and Desktop App
+pywebview==5.0.0
+
+# Encryption
+cryptography==42.0.0
+
+# Visualization
+matplotlib==3.8.2
+
+# Utilities
+psutil==5.9.7
+Pillow==10.2.0
+
+# Logging
+colorlog==6.8.0

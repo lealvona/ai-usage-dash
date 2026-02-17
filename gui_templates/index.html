@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Usage Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Password Modal -->
+        <div id="password-modal" class="modal">
+            <div class="modal-content">
+                <h2>🔐 Enter Master Password</h2>
+                <p>Enter your master password to unlock your API keys</p>
+                <input type="password" id="master-password" placeholder="Master Password">
+                <button onclick="initializeStorage()" class="btn-primary">Unlock</button>
+                <div id="password-error" class="error-message"></div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div id="main-app" class="hidden">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-content">
+                    <div class="logo">
+                        <span class="logo-icon">🤖</span>
+                        <h1>AI Usage Dashboard</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button onclick="showSettings()" class="btn-secondary">⚙️ Settings</button>
+                        <button onclick="refreshData()" class="btn-secondary">🔄 Refresh</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Navigation -->
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+                <button class="nav-tab" data-tab="providers" onclick="switchTab('providers')">🔌 Providers</button>
+                <button class="nav-tab" data-tab="analytics" onclick="switchTab('analytics')">📈 Analytics</button>
+            </nav>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <!-- Time Period Selector -->
+                <div class="period-selector">
+                    <button class="period-btn active" data-period="hourly" onclick="changePeriod('hourly')">Hourly</button>
+                    <button class="period-btn" data-period="daily" onclick="changePeriod('daily')">Daily</button>
+                    <button class="period-btn" data-period="weekly" onclick="changePeriod('weekly')">Weekly</button>
+                    <button class="period-btn" data-period="monthly" onclick="changePeriod('monthly')">Monthly</button>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-cards" id="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-icon">📊</div>
+                        <div class="card-content">
+                            <h3>Total Tokens</h3>
+                            <p class="card-value" id="total-tokens">0</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon">🔢</div>
+                        <div class="card-content">
+                            <h3>Total Requests</h3>
+                            <p class="card-value" id="total-requests">0</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon">💰</div>
+                        <div class="card-content">
+                            <h3>Total Cost</h3>
+                            <p class="card-value" id="total-cost">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon">🔌</div>
+                        <div class="card-content">
+                            <h3>Active Providers</h3>
+                            <p class="card-value" id="active-providers">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <h3>Usage Distribution</h3>
+                        <canvas id="usage-pie-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Cost by Provider</h3>
+                        <canvas id="cost-bar-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Provider Cards -->
+                <div class="provider-cards" id="provider-cards">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Providers Tab -->
+            <div id="providers-tab" class="tab-content hidden">
+                <div class="providers-grid" id="providers-grid">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics-tab" class="tab-content hidden">
+                <div class="analytics-container">
+                    <div class="chart-large">
+                        <h3>Usage Trends (Last 30 Days)</h3>
+                        <canvas id="usage-line-chart"></canvas>
+                    </div>
+                    <div class="chart-large">
+                        <h3>Request Volume</h3>
+                        <canvas id="requests-line-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2>⚙️ Settings</h2>
+                    <button onclick="hideSettings()" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3>API Key Management</h3>
+                        <div id="api-keys-list">
+                            <!-- Dynamically populated -->
+                        </div>
+                        <div class="add-key-form">
+                            <select id="provider-select">
+                                <option value="openai">OpenAI</option>
+                                <option value="claude">Claude</option>
+                                <option value="gemini">Gemini</option>
+                                <option value="minimax">Mini Max</option>
+                                <option value="zai">Z.ai</option>
+                            </select>
+                            <input type="password" id="new-api-key" placeholder="Enter API key">
+                            <button onclick="addApiKey()" class="btn-primary">Add Key</button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Update Settings</h3>
+                        <label>
+                            <input type="checkbox" id="auto-update" checked>
+                            Auto-update every 5 minutes
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <!-- Notification -->
+        <div id="notification" class="notification hidden">
+            <span id="notification-message"></span>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

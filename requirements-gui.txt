@@ -1,0 +1,6 @@
+# Additional dependencies for GUI application
+pywebview==4.4.1
+cryptography==42.0.0
+matplotlib==3.8.2
+psutil==5.9.7
+Pillow==10.2.0
