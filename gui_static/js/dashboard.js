@@ -187,11 +187,11 @@ function updateSummaryCards(data) {
     let activeCount = 0;
     
     Object.values(data.providers).forEach(provider => {
-        if (provider.status === 'success' && provider.data) {
+        if ((provider.status === 'success' || provider.status === 'limited') && provider.data) {
             totalTokens += provider.data.total_tokens || 0;
             totalRequests += provider.data.total_requests || 0;
             totalCost += provider.data.total_cost || 0;
-            activeCount++;
+            if (provider.status === 'success') activeCount++;
         }
     });
     
@@ -211,7 +211,7 @@ function updateCharts(data) {
     const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
     
     providers.forEach(([name, provider], index) => {
-        if (provider.status === 'success' && provider.data) {
+        if ((provider.status === 'success' || provider.status === 'limited') && provider.data) {
             labels.push(PROVIDER_NAMES[name] || name);
             tokensData.push(provider.data.total_tokens || 0);
             costData.push(provider.data.total_cost || 0);
@@ -324,6 +324,7 @@ function createProviderCard(name, provider) {
     card.className = 'provider-card';
     
     const status = provider.status === 'success' ? 'active' : 
+                   provider.status === 'limited' ? 'active' :
                    provider.status === 'error' ? 'error' : 'inactive';
     
     const tokens = provider.data?.total_tokens || 0;

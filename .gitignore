@@ -70,3 +70,10 @@ yarn-error.log
 # Temporary files
 *.tmp
 *.temp
+
+# uv
+.venv/
+
+# Junk files
+nul
+flask_log.txt

@@ -169,7 +169,8 @@ class EnhancedAPIClient:
                      headers: Optional[Dict] = None, 
                      params: Optional[Dict] = None,
                      data: Optional[Dict] = None,
-                     use_cache: bool = True) -> Dict[str, Any]:
+                     use_cache: bool = True,
+                     timeout: int = 30) -> Dict[str, Any]:
         """
         Make rate-limited API request with caching and error handling
         
@@ -210,7 +211,8 @@ class EnhancedAPIClient:
                 url=url,
                 headers=headers,
                 params=params,
-                json=data
+                json=data,
+                timeout=timeout
             )
             
             # Record call
